@@ -17,9 +17,40 @@ ctx.clear = function(){
 }
 resizeCanvas();
 
-for(let i = 0; i < 32; i++){
+for(let i = 0; i < 8; i++){
     ball_list.push(new Ball(i));
 }
+
+ball_mouse = new Ball(1001);
+ball_mouse.visible = false;
+ball_mouse.subjectToGravity = false;
+ball_mouse.subjectToCollision = false;
+ball_mouse.mass = 1000;
+
+window.addEventListener('mousemove',function(e){
+    ball_mouse.position.x = e.pageX;
+    ball_mouse.position.y = e.pageY;
+})
+
+window.addEventListener('mouseup',function(e){
+    for(ball of ball_list){
+        if (ball.distanceTo(ball_mouse) <= ball.radius && ball.visible){
+            return console.log(ball);
+        }
+    }
+})
+
+window.addEventListener('dblclick',function(){
+    if(ball_mouse.provideGravity){
+        ball_mouse.provideGravity = false;
+        console.log('mouse gravity : false');
+    }else{
+        ball_mouse.provideGravity = true;
+        console.log('mouse gravity : true');
+    }
+})
+
+ball_list.push(ball_mouse);
 
 render();
 
@@ -40,6 +71,7 @@ function processing(){
         gravityEffect,
         collisionJudge,
         preventTooFast,
+        stopSelected,
         //frictionEffect,
     ];
 
@@ -55,6 +87,13 @@ function processing(){
 
 }
 
+function stopSelected(ball){
+    if(ball.distanceTo(ball_mouse) <= ball.radius){
+        ball.speed.x = 0;
+        ball.speed.y = 0;
+    }
+}
+
 function adjustRadius(ball){
     
     if ((radius = Math.pow(3*ball.mass/(4*ball.density*Math.PI), 1/3) / setting.scale) > 1){
@@ -67,52 +106,53 @@ function adjustRadius(ball){
 function moveMent(ball){
     ball.position.x += ball.speed.x;
     ball.position.y += ball.speed.y;
-    switch(setting.border_event){
-        case 1:
-            if(ball.position.x - ball.radius <= 0 || ball.position.x + ball.radius >= window.innerWidth){
-                ball.speed.x *= -1;
-            }
-            if(ball.position.y - ball.radius <= 0 || ball.position.y + ball.radius >= window.innerHeight){
-                ball.speed.y *= -1;
-            }
-        break;
-        case 2:
-            if(ball.position.x < 0){
-                ball.position.x = window.innerWidth;
-            }
-            if(ball.position.x > window.innerWidth){
-                ball.position.x = 0;
-            }
-            if(ball.position.y < 0){
-                ball.position.y = window.innerHeight;
-            }
-            if(ball.position.y > window.innerHeight){
-                ball.position.y = 0;
-            }
-        break;
-        case 3:
-            ball_list.splice(ball.id,1);
-        break;
-        case 4:
-            if(ball.position.x < 0){
-                ball.position.x = window.innerWidth;
-                ball.position.y = window.innerHeight - ball.position.y;
-            }
-            if(ball.position.x > window.innerWidth){
-                ball.position.x = 0;
-                ball.position.y = window.innerHeight - ball.position.y;
-            }
-            if(ball.position.y < 0){
-                ball.position.y = window.innerHeight;
-                ball.position.x = window.innerWidth - ball.position.x;
-            }
-            if(ball.position.y > window.innerHeight){
-                ball.position.y = 0;
-                ball.position.x = window.innerWidth - ball.position.x;
-            }
-        break;
+    if(ball.subjectToCollision){
+        switch(setting.border_event){
+            case 1:
+                if(ball.position.x - ball.radius <= 0 || ball.position.x + ball.radius >= window.innerWidth){
+                    ball.speed.x *= -1;
+                }
+                if(ball.position.y - ball.radius <= 0 || ball.position.y + ball.radius >= window.innerHeight){
+                    ball.speed.y *= -1;
+                }
+            break;
+            case 2:
+                if(ball.position.x < 0){
+                    ball.position.x = window.innerWidth;
+                }
+                if(ball.position.x > window.innerWidth){
+                    ball.position.x = 0;
+                }
+                if(ball.position.y < 0){
+                    ball.position.y = window.innerHeight;
+                }
+                if(ball.position.y > window.innerHeight){
+                    ball.position.y = 0;
+                }
+            break;
+            case 3:
+                ball_list.splice(ball.id,1);
+            break;
+            case 4:
+                if(ball.position.x < 0){
+                    ball.position.x = window.innerWidth;
+                    ball.position.y = window.innerHeight - ball.position.y;
+                }
+                if(ball.position.x > window.innerWidth){
+                    ball.position.x = 0;
+                    ball.position.y = window.innerHeight - ball.position.y;
+                }
+                if(ball.position.y < 0){
+                    ball.position.y = window.innerHeight;
+                    ball.position.x = window.innerWidth - ball.position.x;
+                }
+                if(ball.position.y > window.innerHeight){
+                    ball.position.y = 0;
+                    ball.position.x = window.innerWidth - ball.position.x;
+                }
+            break;
+        }
     }
-    
 }
 
 function gravityEffect(ball_a){
@@ -121,7 +161,7 @@ function gravityEffect(ball_a){
     }
     G = setting.G;
     for(ball_b of ball_list){
-        if(ball_a.gravity_be['from_'+ball_b.id] == undefined && ball_a.id != ball_b.id && ball_b.subjectToGravity){
+        if(ball_a.gravity_be['from_'+ball_b.id] == undefined && ball_a.id != ball_b.id && ball_b.provideGravity){
             var vector = ball_a.vectorTo(ball_b);
             var distance = normOfVector(vector);
             var gravity = G * ball_a.mass * ball_b.mass / Math.pow(distance,2);
@@ -164,7 +204,7 @@ function gravityEffect(ball_a){
 }
 
 function preventTooFast(ball){
-    if(normOfVector(ball.speed) >= 14){
+    if(normOfVector(ball.speed) >= 12){
         ball.speed.x /= 4;
         ball.speed.y /= 4;
     }
@@ -225,6 +265,7 @@ function paintBalls(){
 
 function Ball(id){
     this.id = id;
+
     this.position = {
         x : Math.floor(Math.random()*window.innerWidth + 1),
         y : Math.floor(Math.random()*window.innerHeight + 1),
@@ -232,18 +273,26 @@ function Ball(id){
     this.speed = {
         x : Math.floor(Math.random()*5 - 2.5),
         y : Math.floor(Math.random()*5 - 2.5),
-    }
-    this.density = 1;
-    this.mass = Math.floor(Math.random()*400 + 100);
+    }  
+    this.density = 0.25;
+    this.mass = Math.floor(Math.random()*400 + 50);
+    this.radius = 5 * this.mass / 100;
+    this.subjectToGravity = true;
+    this.provideGravity = true;
+    this.subjectToCollision = true;
+
     this.gravity_be = {};
     this.collision_ed = [];
+    
+    this.visible = true;
     this.color = '#fff';
-    this.radius = 5 * this.mass / 100;
+    this.font = '18px bold Nunito';
+    this.text = null;
+    this.textShadowBlur = 0;
+    this.textColor = '#000';
     this.shadowBlur = 10;
     this.shadowColor = '#000';
-    this.visible = true;
-    this.subjectToGravity = true;
-    this.subjectToCollision = true;
+    
     this.paint = function(){
         ctx.shadowBlur = this.shadowBlur;
         ctx.shadowColor = this.shadowColor;
@@ -252,6 +301,14 @@ function Ball(id){
         ctx.arc(this.position.x,this.position.y,this.radius,0,2*Math.PI,false);
         ctx.closePath();
         ctx.fill();
+        if(this.text != null){
+            ctx.font = this.font;
+            ctx.fillStyle = this.textColor;
+            ctx.shadowBlur = this.textShadowBlur;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.text,this.position.x,this.position.y,this.radius * 2 - 5);
+        }
     };
     this.distanceTo = function(anotherBall){
         x = Math.abs(this.position.x - anotherBall.position.x);
